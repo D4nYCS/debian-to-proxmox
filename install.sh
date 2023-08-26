@@ -9,45 +9,33 @@ fi
 username=$(id -u -n 1000)
 builddir=$(pwd)
 
-# Update packages list and update system
-apt update
-apt upgrade -y
+apt install proxmox-ve postfix open-iscsi
 
-# Install nala
-apt install nala -y
+apt remove linux-image-amd64 'linux-image-6.1*'
 
-# Making .config and Moving config files
-cd $builddir
-mkdir -p /home/$username/.config
-cp -R dotconfig/* /home/$username/.config/
-chown -R $username:$username /home/$username
+update-grub
 
-# Installing Essential Programs 
-nala install kitty thunar unzip wget -y
-# Installing Other less important Programs
-nala install lightdm xrdp kde-plasma-desktop tmux -y
+apt remove os-prober
 
-# Install chrome-browser
-nala install apt-transport-https curl -y
-curl -fSsL https://dl.google.com/linux/linux_signing_key.pub | sudo gpg --dearmor | sudo tee /usr/share/keyrings/google-chrome.gpg >> /dev/null
-echo "deb [arch=amd64 signed-by=/usr/share/keyrings/google-chrome.gpg] http://dl.google.com/linux/chrome/deb/ stable main" | sudo tee /etc/apt/sources.list.d/google-chrome.list
-nala update
-nala install google-chrome-stable -y
+ip a | grep enp | awk '{ print $NF }'
 
-# Enable graphical login, change target from CLI to GUI and Remote Login
-systemctl enable lightdm
-systemctl set-default graphical.target
-systemctl enable xrdp
+echo "auto lo" > /etc/network/interfaces
+echo "iface lo inet loopbacke" >> /etc/network/interfaces
 
-# System Policy Prevents Popup fix
-echo "[Network Manager all Users]" >> /etc/polkit-1/localauthority/50-local.d/50-allow-network-manager.pkla
-echo "Identity=unix-user:*" >> /etc/polkit-1/localauthority/50-local.d/50-allow-network-manager.pkla
-echo "Action=org.freedesktop.NetworkManager.settings.modify.system;org.freedesktop.NetworkManager.network-control" >> /etc/polkit-1/localauthority/50-local.d/50-allow-network-manager.pkla
-echo "ResultAny=no" >> /etc/polkit-1/localauthority/50-local.d/50-allow-network-manager.pkla
-echo "ResultInactive=no" >> /etc/polkit-1/localauthority/50-local.d/50-allow-network-manager.pkla
-echo "ResultActive=yes" >> /etc/polkit-1/localauthority/50-local.d/50-allow-network-manager.pkla
+interface1='ip a | grep enp | awk '{ print $NF }''
 
-# Use nala
-bash scripts/usenala
+echo "iface $interface1 inet manual" >> /etc/network/interfaces
+
+echo "auto vmbr0" >> /etc/network/interfaces
+echo "iface vmbr0 inet static" >> /etc/network/interfaces
+echo "address 192.168.178.21/24" >> /etc/network/interfaces
+echo "auto vmbr0" >> /etc/network/interfaces
+echo "gateway 192.168.178.1" >> /etc/network/interfaces
+echo "bridge-ports $interface1" >> /etc/network/interfaces
+echo "bridge-stp off" >> /etc/network/interfaces
+echo "bridge-fd 0" >> /etc/network/interfaces
+
+echo "iface enp2s0 inet manual" >> /etc/network/interfaces
+echo "bridge-stp off" >> /etc/network/interfaces
 
 rm -rf $builddir
